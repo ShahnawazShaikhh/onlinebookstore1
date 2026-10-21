@@ -1,4 +1,26 @@
 
+# trigger:
+#   - main
+
+# pool:
+#   name: OpenShiftSA
+
+# steps:
+#   - checkout: self
+
+#   - script: |
+#       echo "Checking Java version"
+#       java -version
+#       echo "Checking Maven version"
+#       mvn -version
+#     displayName: 'Verify Java and Maven'
+
+#   - script: |
+#       mvn clean package
+#     displayName: 'Build Java application'
+
+
+
 trigger:
   - main
 
@@ -18,3 +40,14 @@ steps:
   - script: |
       mvn clean package
     displayName: 'Build Java application'
+
+  - task: Docker@2
+    displayName: 'Build and Push Image to Quay'
+    inputs:
+      command: buildAndPush
+      containerRegistry: 'QuaySC'
+      repository: 'afiyamulla/my-first-app'
+      Dockerfile: '$(Build.SourcesDirectory)/Dockerfile'
+      buildContext: '$(Build.SourcesDirectory)'
+      tags: |
+        $(Build.BuildId)
