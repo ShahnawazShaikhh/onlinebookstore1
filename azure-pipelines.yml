@@ -60,14 +60,23 @@ steps:
        
 
 
+        # oc project onlinebookstore
+        # oc set image deployment/my-first-app my-first-app=quay.io/afiyamulla/my-first-app:$(Build.BuildId) -n onlinebookstore
+        # oc rollout status deployment/my-first-app -n onlinebookstore --timeout=180s
+        # oc get deployment my-first-app -n onlinebookstore
+
+        # oc get pods -n onlinebookstore -o wide
+        # oc get deployment my-first-app -n onlinebookstore
+        # oc describe deployment my-first-app -n onlinebookstore
+
+
+
         oc project onlinebookstore
-        oc set image deployment/my-first-app my-first-app=quay.io/afiyamulla/my-first-app:$(Build.BuildId) -n onlinebookstore
+        oc create deployment my-first-app --image=quay.io/afiyamulla/my-first-app:$(Build.BuildId) --dry-run=client -o yaml | oc apply -f -
         oc rollout status deployment/my-first-app -n onlinebookstore --timeout=180s
         oc get deployment my-first-app -n onlinebookstore
 
-        oc get pods -n onlinebookstore -o wide
-        oc get deployment my-first-app -n onlinebookstore
-        oc describe deployment my-first-app -n onlinebookstore
+
         
       readyTimeout: '20000'
 
