@@ -52,19 +52,6 @@ steps:
       tags: |
         $(Build.BuildId)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
   - task: SSH@0
     inputs:
       sshEndpoint: 'OpenShifSC'
