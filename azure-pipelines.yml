@@ -11,14 +11,8 @@ variables:
   CONTAINER_PORT: 8080
 
 steps:
-  # -------------------------------------------------
-  # 1. Checkout source code
-  # -------------------------------------------------
   - checkout: self
 
-  # -------------------------------------------------
-  # 2. Verify tools
-  # -------------------------------------------------
   - script: |
       echo "=== Java version ==="
       java -version
@@ -26,17 +20,11 @@ steps:
       mvn -version
     displayName: 'Verify Java and Maven'
 
-  # -------------------------------------------------
-  # 3. Build the Java application
-  # -------------------------------------------------
   - script: |
       echo "Building application..."
       mvn clean package -DskipTests
     displayName: 'Build Java application (Maven)'
 
-  # -------------------------------------------------
-  # 4. Build & Push Docker image to Quay
-  # -------------------------------------------------
   - task: Docker@2
     displayName: 'Build and Push Image to Quay'
     inputs:
@@ -49,9 +37,6 @@ steps:
         $(Build.BuildId)
         latest
 
-  # -------------------------------------------------
-  # 5. Deploy to OpenShift (idempotent)
-  # -------------------------------------------------
   - task: SSH@0
     displayName: 'Deploy to OpenShift + Expose Route'
     inputs:
@@ -65,43 +50,25 @@ steps:
         oc project $(NAMESPACE)
 
         echo "=== Creating / updating Deployment ==="
-        oc create deployment $(APP_NAME) \
-          --image=$(IMAGE_NAME):$(Build.BuildId) \
-          --dry-run=client -o yaml | oc apply -f -
+        oc create deployment $(APP_NAME) --image=$(IMAGE_NAME):$(Build.BuildId) --dry-run=client -o yaml | oc apply -f -
 
-        # Make sure the container port is correct (optional but recommended)
-        oc set resources deployment/$(APP_NAME) \
-          --limits=cpu=500m,memory=512Mi \
-          --requests=cpu=100m,memory=128Mi \
-          -n $(NAMESPACE) || true
+        echo "=== Setting resource limits (optional) ==="
+        oc set resources deployment/$(APP_NAME) --limits=cpu=500m,memory=512Mi --requests=cpu=100m,memory=128Mi -n $(NAMESPACE) || true
 
         echo "=== Waiting for rollout ==="
-        oc rollout status deployment/$(APP_NAME) \
-          -n $(NAMESPACE) \
-          --timeout=180s
+        oc rollout status deployment/$(APP_NAME) -n $(NAMESPACE) --timeout=180s
 
         echo "=== Ensuring Service exists (idempotent) ==="
-        oc expose deployment $(APP_NAME) \
-          --name=$(APP_NAME) \
-          --port=$(CONTAINER_PORT) \
-          --target-port=$(CONTAINER_PORT) \
-          -n $(NAMESPACE) \
-          --dry-run=client -o yaml | oc apply -f -
+        oc expose deployment $(APP_NAME) --name=$(APP_NAME) --port=$(CONTAINER_PORT) --target-port=$(CONTAINER_PORT) -n $(NAMESPACE) --dry-run=client -o yaml | oc apply -f -
 
         echo "=== Ensuring Route exists (idempotent) ==="
-        oc expose service $(APP_NAME) \
-          --name=$(APP_NAME) \
-          -n $(NAMESPACE) \
-          --dry-run=client -o yaml | oc apply -f -
+        oc expose service $(APP_NAME) --name=$(APP_NAME) -n $(NAMESPACE) --dry-run=client -o yaml | oc apply -f -
 
         echo "=== Final status ==="
-        oc get deployment,svc,route -n $(NAMESPACE) -l app=$(APP_NAME) || \
         oc get deployment,svc,route -n $(NAMESPACE)
 
         echo "=== Currently deployed image ==="
-        oc get deployment $(APP_NAME) -n $(NAMESPACE) \
-          -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
+        oc get deployment $(APP_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}'
 
         echo "=== Route URL ==="
-        oc get route $(APP_NAME) -n $(NAMESPACE) \
-          -o jsonpath='{.spec.host}{"\n"}' || echo "No route found"
+        oc get route $(APP_NAME) -n $(NAMESPACE) -o jsonpath='{.spec.host}{"\n"}' || echo "No route found"
