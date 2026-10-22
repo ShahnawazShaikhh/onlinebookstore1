@@ -51,3 +51,26 @@ steps:
       buildContext: '$(Build.SourcesDirectory)'
       tags: |
         $(Build.BuildId)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  - task: SSH@0
+    inputs:
+      sshEndpoint: 'OpenShifSC'
+      runOptions: 'commands'
+      commands: |
+        oc whoami
+        oc get deployment my-first-app -n onlinebookstore
+      readyTimeout: '20000'
+
