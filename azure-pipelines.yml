@@ -29,6 +29,7 @@ steps:
       tags: |
         $(Build.BuildId)
 
+  
   - task: SSH@0
     displayName: 'Deploy Application and Expose Route'
     inputs:
@@ -40,39 +41,25 @@ steps:
         echo "Selecting OpenShift project"
         oc project onlinebookstore
 
-        echo "Creating or updating Deployment with current Build ID"
-        oc create deployment my-first-app \
-          --image=quay.io/afiyamulla/my-first-app:$(Build.BuildId) \
-          --dry-run=client -o yaml | oc apply -f -
+        echo "Creating or updating Deployment"
+        oc create deployment my-first-app --image=quay.io/afiyamulla/my-first-app:$(Build.BuildId) --dry-run=client -o yaml | oc apply -f -
 
         echo "Waiting for Deployment rollout"
-        oc rollout status deployment/my-first-app \
-          -n onlinebookstore --timeout=180s
+        oc rollout status deployment/my-first-app -n onlinebookstore --timeout=180s
 
-        echo "Creating Service if it does not exist"
-        oc get service my-first-app -n onlinebookstore >/dev/null 2>&1 || \
-          oc expose deployment my-first-app \
-            --name=my-first-app \
-            --port=8080 \
-            --target-port=8080 \
-            -n onlinebookstore
+        echo "Creating Service if missing"
+        if ! oc get service my-first-app -n onlinebookstore; then
+          oc expose deployment my-first-app --name=my-first-app --port=8080 --target-port=8080 -n onlinebookstore
+        fi
 
-        echo "Creating Route if it does not exist"
-        oc get route my-first-app -n onlinebookstore >/dev/null 2>&1 || \
-          oc expose service my-first-app \
-            --name=my-first-app \
-            -n onlinebookstore
+        echo "Creating Route if missing"
+        if ! oc get route my-first-app -n onlinebookstore; then
+          oc expose service my-first-app --name=my-first-app -n onlinebookstore
+        fi
 
-        echo "Verifying Deployment"
-        oc get deployment my-first-app -n onlinebookstore
-
-        echo "Verifying Service"
-        oc get service my-first-app -n onlinebookstore
-
-        echo "Application Route"
-        oc get route my-first-app -n onlinebookstore
+        echo "Deployment status"
+        oc get deployment,service,route -n onlinebookstore
 
         echo "Deployed image"
-        oc get deployment my-first-app -n onlinebookstore \
-          -o jsonpath='{.spec.template.spec.containers[*].image}{"\n"}'
+        oc get deployment my-first-app -n onlinebookstore -o jsonpath='{.spec.template.spec.containers[*].image}{"\n"}'
       readyTimeout: '20000'
